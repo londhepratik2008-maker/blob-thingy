@@ -338,6 +338,9 @@ function animate() {
   }
   s2Geo.attributes.position.needsUpdate = true;
 
+  ringGroup.rotation.y += 0.002 * dt * (1 + vol * 3);
+  ringGroup.rotation.x = Math.sin(t * 0.3) * 0.15;
+
   for (var ri = 0; ri < rings.length; ri++) {
     rings[ri].mesh.rotation.z += rings[ri].speed * dt * (1 + vol * 4);
   }
