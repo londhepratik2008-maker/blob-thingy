@@ -62,14 +62,10 @@ scene.add(new THREE.AmbientLight(0x0a1020, 0.5));
 const keyLight = new THREE.DirectionalLight(0x4080ff, 0.6);
 keyLight.position.set(4, 6, 5);
 scene.add(keyLight);
-const amberLight = new THREE.DirectionalLight(0xffa040, 0.5);
-amberLight.position.set(-4, 3, -5);
-scene.add(amberLight);
+
 const coreLight = new THREE.PointLight(0x00bbff, 1.2, 20);
 scene.add(coreLight);
-const bottomGlow = new THREE.PointLight(0x0060cc, 0.5, 15);
-bottomGlow.position.set(0, -4, 0);
-scene.add(bottomGlow);
+
 
 const orbGroup = new THREE.Group();
 scene.add(orbGroup);
@@ -203,63 +199,13 @@ scene.add(new THREE.Points(nodeGeo, nodeMat));
 
 
 
-var gridHelper = new THREE.GridHelper(60, 60, 0x080c14, 0x040608);
-gridHelper.position.y = -3.5;
-gridHelper.material.transparent = true;
-gridHelper.material.opacity = 0.3;
-scene.add(gridHelper);
 
-var floor = new THREE.Mesh(
-  new THREE.PlaneGeometry(60, 60),
-  new THREE.MeshStandardMaterial({ color: 0x080c18, roughness: 0.2, metalness: 0.7, transparent: true, opacity: 0.5 })
-);
-floor.rotation.x = -Math.PI / 2; floor.position.y = -3.5;
-scene.add(floor);
 
-function createPillar(x, z, height) {
-  var p = new THREE.Mesh(
-    new THREE.BoxGeometry(0.5, height, 0.5),
-    new THREE.MeshStandardMaterial({ color: 0x0a0e16, roughness: 0.85, metalness: 0.3 })
-  );
-  p.position.set(x, height / 2 - 3.5, z);
-  return p;
-}
-[[-8,-10],[-5,-12],[5,-12],[8,-10],[-7,10],[7,10],[-10,0],[10,0]].forEach(function(pos) { scene.add(createPillar(pos[0], pos[1], 14)); });
 
-function createMonitor(x, y, z, rotY) {
-  var g = new THREE.Group();
-  g.add(new THREE.Mesh(new THREE.BoxGeometry(0.1,0.8,0.1), new THREE.MeshStandardMaterial({color:0x0c1018,roughness:0.9,metalness:0.2})));
-  var screen = new THREE.Mesh(new THREE.BoxGeometry(1.4,0.9,0.05), new THREE.MeshBasicMaterial({color:0x001828,transparent:true,opacity:0.8}));
-  screen.position.y = 0.1; g.add(screen);
-  var glow = new THREE.Mesh(new THREE.PlaneGeometry(1.2,0.7), new THREE.MeshBasicMaterial({color:0x003060,transparent:true,opacity:0.3,blending:THREE.AdditiveBlending,depthWrite:false}));
-  glow.position.set(0,0.1,0.04); g.add(glow);
-  g.position.set(x,y,z); g.rotation.y = rotY;
-  return g;
-}
-scene.add(createMonitor(-6,-2.2,-8,0.4));
-scene.add(createMonitor(6,-2.2,-8,-0.4));
-scene.add(createMonitor(-4,-2.2,-10,0.2));
-scene.add(createMonitor(4,-2.2,-10,-0.2));
 
-function createDesk(x, z) {
-  var d = new THREE.Mesh(new THREE.BoxGeometry(2.5,0.08,1.2), new THREE.MeshStandardMaterial({color:0x0c1018,roughness:0.7,metalness:0.4}));
-  d.position.set(x,-2.5,z);
-  return d;
-}
-scene.add(createDesk(-6,-7.5));
-scene.add(createDesk(6,-7.5));
-scene.add(createDesk(-4,-9.5));
-scene.add(createDesk(4,-9.5));
 
-var dustPos = new Float32Array(400 * 3);
-for (var i = 0; i < 400; i++) {
-  dustPos[i*3] = (Math.random()-0.5)*30;
-  dustPos[i*3+1] = (Math.random()-0.5)*12;
-  dustPos[i*3+2] = (Math.random()-0.5)*30;
-}
-var dustGeo = new THREE.BufferGeometry();
-dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
-scene.add(new THREE.Points(dustGeo, new THREE.PointsMaterial({color:0x4080c0,size:0.025,transparent:true,opacity:0.3,blending:THREE.AdditiveBlending,depthWrite:false})));
+
+
 
 
 
@@ -419,7 +365,6 @@ function animate() {
 
   bloom.strength = 2.0 + vol * 3;
   keyLight.intensity = 0.6 + vol * 1.5;
-  amberLight.intensity = 0.5 + vol * 1.2;
 
   camera.position.x = Math.sin(t * 0.12) * 0.25;
   camera.position.y = 1.2 + Math.cos(t * 0.08) * 0.12;
