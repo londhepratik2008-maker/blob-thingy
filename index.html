@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>J.A.R.V.I.S. Holographic AI Core</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;overflow:hidden;font-family:'Segoe UI',system-ui,sans-serif}
+canvas{display:block}
+#ui{position:fixed;bottom:40px;left:50%;transform:translateX(-50%);z-index:10;display:flex;flex-direction:column;align-items:center;gap:14px}
+#micBtn{padding:12px 28px;border-radius:30px;border:1.5px solid rgba(0,180,255,0.4);background:rgba(0,150,255,0.06);color:rgba(0,200,255,0.8);font-size:13px;letter-spacing:3px;text-transform:uppercase;font-family:inherit;cursor:pointer;transition:all 0.3s;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px)}
+#micBtn:hover{border-color:rgba(0,200,255,0.8);box-shadow:0 0 25px rgba(0,180,255,0.25)}
+#micBtn.active{border-color:rgba(255,180,50,0.9);background:rgba(255,150,30,0.12);color:rgba(255,200,80,0.9);box-shadow:0 0 35px rgba(255,150,30,0.35);animation:btnPulse 1.5s ease-in-out infinite}
+@keyframes btnPulse{0%,100%{box-shadow:0 0 25px rgba(255,150,30,0.25)}50%{box-shadow:0 0 45px rgba(255,150,30,0.5)}}
+#meter{width:160px;height:2px;background:rgba(255,255,255,0.04);border-radius:1px;overflow:hidden}
+#meterFill{height:100%;width:0%;background:linear-gradient(90deg,rgba(0,180,255,0.8),rgba(255,200,80,0.9));transition:width 0.05s}
+#output{position:fixed;bottom:120px;left:50%;transform:translateX(-50%);z-index:10;font-size:14px;letter-spacing:2px;color:rgba(0,220,255,0.9);text-transform:uppercase;opacity:0;transition:opacity 0.4s;text-shadow:0 0 20px rgba(0,200,255,0.6);white-space:nowrap}
+#output.show{opacity:1}
+</style>
+</head>
+<body>
+<div id="output"></div>
+<div id="ui">
+<button id="micBtn">speak here</button>
+<div id="meter"><div id="meterFill"></div></div>
+</div>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x020408, 0.025);
+
+const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.1, 100);
+camera.position.set(0, 1.2, 8);
+camera.lookAt(0, 0, 0);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.6;
+document.body.appendChild(renderer.domElement);
+
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 2.2, 0.4, 0.05);
+composer.addPass(bloom);
+
+scene.add(new THREE.AmbientLight(0x0a1020, 0.5));
+const keyLight = new THREE.DirectionalLight(0x4080ff, 0.6);
+keyLight.position.set(4, 6, 5);
+scene.add(keyLight);
+const amberLight = new THREE.DirectionalLight(0xffa040, 0.5);
+amberLight.position.set(-4, 3, -5);
+scene.add(amberLight);
+const coreLight = new THREE.PointLight(0x00bbff, 1.2, 20);
+scene.add(coreLight);
+const bottomGlow = new THREE.PointLight(0x0060cc, 0.5, 15);
+bottomGlow.position.set(0, -4, 0);
+scene.add(bottomGlow);
+
+const orbGroup = new THREE.Group();
+scene.add(orbGroup);
+
+const orbMat = new THREE.MeshBasicMaterial({ color: 0x0088ff, transparent: true, opacity: 0.15 });
+const orb = new THREE.Mesh(new THREE.SphereGeometry(0.6, 64, 64), orbMat);
+orbGroup.add(orb);
+const orbCoreMat = new THREE.MeshBasicMaterial({ color: 0x00ccff, transparent: true, opacity: 0.4 });
+const orbCore = new THREE.Mesh(new THREE.SphereGeometry(0.3, 32, 32), orbCoreMat);
+orbGroup.add(orbCore);
+
+const wireMat = new THREE.MeshBasicMaterial({ color: 0x00aaff, wireframe: true, transparent: true, opacity: 0.2 });
+const wireSphere = new THREE.Mesh(new THREE.IcosahedronGeometry(1.4, 5), wireMat);
+orbGroup.add(wireSphere);
+const midMat = new THREE.MeshBasicMaterial({ color: 0xffaa30, wireframe: true, transparent: true, opacity: 0.14 });
+const midSphere = new THREE.Mesh(new THREE.IcosahedronGeometry(1.35, 4), midMat);
+orbGroup.add(midSphere);
+const innerMat = new THREE.MeshBasicMaterial({ color: 0x0099ff, wireframe: true, transparent: true, opacity: 0.08 });
+const innerSphere = new THREE.Mesh(new THREE.IcosahedronGeometry(1.28, 3), innerMat);
+orbGroup.add(innerSphere);
+
+const STREAM_COUNT = 4000;
+const streamPos = new Float32Array(STREAM_COUNT * 3);
+const streamVel = new Float32Array(STREAM_COUNT * 3);
+const streamLife = new Float32Array(STREAM_COUNT);
+const streamSpeed = new Float32Array(STREAM_COUNT);
+
+function respawnStreamParticle(i) {
+  const theta = Math.random() * Math.PI * 2;
+  const phi = Math.acos(2 * Math.random() - 1);
+  const r = 1.42 + (Math.random() - 0.5) * 0.18;
+  streamPos[i*3] = r*Math.sin(phi)*Math.cos(theta);
+  streamPos[i*3+1] = r*Math.sin(phi)*Math.sin(theta);
+  streamPos[i*3+2] = r*Math.cos(phi);
+  streamVel[i*3] = (Math.random()-0.5)*0.003;
+  streamVel[i*3+1] = 0.003+Math.random()*0.005;
+  streamVel[i*3+2] = (Math.random()-0.5)*0.003;
+  streamLife[i] = Math.random();
+  streamSpeed[i] = 0.4+Math.random()*1.2;
+}
+
+for (let i = 0; i < STREAM_COUNT; i++) respawnStreamParticle(i);
+const streamGeo = new THREE.BufferGeometry();
+streamGeo.setAttribute('position', new THREE.BufferAttribute(streamPos, 3));
+const streamMat = new THREE.PointsMaterial({ color: 0x00ddff, size: 0.018, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false });
+orbGroup.add(new THREE.Points(streamGeo, streamMat));
+
+const S2_COUNT = 2000;
+const s2Pos = new Float32Array(S2_COUNT * 3);
+const s2Vel = new Float32Array(S2_COUNT * 3);
+const s2Life = new Float32Array(S2_COUNT);
+const s2Speed = new Float32Array(S2_COUNT);
+
+for (let i = 0; i < S2_COUNT; i++) {
+  const theta = Math.random() * Math.PI * 2;
+  const phi = Math.acos(2 * Math.random() - 1);
+  const r = 1.45 + (Math.random() - 0.5) * 0.12;
+  s2Pos[i*3] = r*Math.sin(phi)*Math.cos(theta);
+  s2Pos[i*3+1] = r*Math.sin(phi)*Math.sin(theta);
+  s2Pos[i*3+2] = r*Math.cos(phi);
+  s2Vel[i*3] = (Math.random()-0.5)*0.002;
+  s2Vel[i*3+1] = -(0.002+Math.random()*0.003);
+  s2Vel[i*3+2] = (Math.random()-0.5)*0.002;
+  s2Life[i] = Math.random();
+  s2Speed[i] = 0.3+Math.random()*0.8;
+}
+
+const s2Geo = new THREE.BufferGeometry();
+s2Geo.setAttribute('position', new THREE.BufferAttribute(s2Pos, 3));
+const s2Mat = new THREE.PointsMaterial({ color: 0xffaa40, size: 0.012, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false });
+orbGroup.add(new THREE.Points(s2Geo, s2Mat));
+
+function createRing(radius, tube, color, opacity) {
+  return new THREE.Mesh(
+    new THREE.TorusGeometry(radius, tube, 24, 180),
+    new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: opacity, blending: THREE.AdditiveBlending, depthWrite: false })
+  );
+}
+
+const ringGroup = new THREE.Group();
+orbGroup.add(ringGroup);
+
+const rings = [
+  { mesh: createRing(1.9, 0.009, 0x00aaff, 0.4), speed: 0.15, tilt: 0.3 },
+  { mesh: createRing(2.15, 0.007, 0xffaa30, 0.3), speed: -0.12, tilt: 0.55 },
+  { mesh: createRing(2.4, 0.006, 0x0088ff, 0.25), speed: 0.1, tilt: -0.2 },
+  { mesh: createRing(2.65, 0.005, 0xff8820, 0.2), speed: -0.08, tilt: 0.75 },
+  { mesh: createRing(1.65, 0.008, 0x00ccff, 0.35), speed: 0.18, tilt: -0.4 },
+  { mesh: createRing(2.9, 0.004, 0xff9940, 0.15), speed: 0.06, tilt: 0.15 }
+];
+
+rings.forEach(function(r) { r.mesh.rotation.x = r.tilt; ringGroup.add(r.mesh); });
+
+const RING_PARTICLE_COUNT = 700;
+const rpPos = new Float32Array(RING_PARTICLE_COUNT * 3);
+const rpData = [];
+for (let i = 0; i < RING_PARTICLE_COUNT; i++) {
+  const ringIdx = Math.floor(Math.random() * rings.length);
+  const radius = 1.9 + ringIdx * 0.25 + (Math.random() - 0.5) * 0.15;
+  const angle = Math.random() * Math.PI * 2;
+  const speed = (0.2 + Math.random() * 0.4) * (Math.random() < 0.5 ? 1 : -1);
+  rpData.push({ radius: radius, angle: angle, speed: speed, ringIdx: ringIdx });
+  rpPos[i*3] = Math.cos(angle) * radius;
+  rpPos[i*3+1] = 0;
+  rpPos[i*3+2] = Math.sin(angle) * radius;
+}
+
+const rpGeo = new THREE.BufferGeometry();
+rpGeo.setAttribute('position', new THREE.BufferAttribute(rpPos, 3));
+ringGroup.add(new THREE.Points(rpGeo, new THREE.PointsMaterial({ color: 0x44ddff, size: 0.028, transparent: true, opacity: 0.65, blending: THREE.AdditiveBlending, depthWrite: false })));
+
+const NODE_COUNT = 80;
+const nodePos = new Float32Array(NODE_COUNT * 3);
+const nodeDataArr = [];
+for (let i = 0; i < NODE_COUNT; i++) {
+  const theta = Math.random() * Math.PI * 2;
+  const phi = Math.acos(2 * Math.random() - 1);
+  const r = 1.6 + Math.random() * 1.4;
+  nodePos[i*3] = r * Math.sin(phi) * Math.cos(theta);
+  nodePos[i*3+1] = r * Math.sin(phi) * Math.sin(theta);
+  nodePos[i*3+2] = r * Math.cos(phi);
+  nodeDataArr.push({
+    baseX: nodePos[i*3], baseY: nodePos[i*3+1], baseZ: nodePos[i*3+2],
+    pulseSpeed: 0.5 + Math.random() * 2, phase: Math.random() * Math.PI * 2
+  });
+}
+const nodeGeo = new THREE.BufferGeometry();
+nodeGeo.setAttribute('position', new THREE.BufferAttribute(nodePos, 3));
+const nodeMat = new THREE.PointsMaterial({ color: 0x00eeff, size: 0.06, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false });
+scene.add(new THREE.Points(nodeGeo, nodeMat));
+
+function createHUDScreen(x, y, z, rotY, width, height, text, color) {
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 256;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = 'rgba(0,10,20,0.4)';
+  ctx.fillRect(0, 0, 512, 256);
+  ctx.strokeStyle = color; ctx.lineWidth = 2;
+  ctx.strokeRect(4, 4, 504, 248);
+  ctx.fillStyle = color; ctx.font = 'bold 28px monospace';
+  ctx.fillText(text, 20, 50);
+  ctx.font = '14px monospace';
+  var lines = ['NEURAL NETWORK ACTIVE', 'SYNC RATE: 99.7%', 'LATENCY: 0.3ms', 'ENTROPY: NOMINAL', 'UPTIME: ' + Math.floor(Math.random() * 999) + 'h'];
+  for (var j = 0; j < lines.length; j++) ctx.fillText(lines[j], 20, 90 + j * 24);
+  ctx.fillStyle = 'rgba(0,200,255,0.1)';
+  for (var j = 0; j < 8; j++) ctx.fillRect(20, 200 + j * 6, Math.random() * 470, 2);
+  var tex = new THREE.CanvasTexture(c);
+  var mesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(width, height),
+    new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.55, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false })
+  );
+  mesh.position.set(x, y, z); mesh.rotation.y = rotY;
+  return mesh;
+}
+
+var hudGroup = new THREE.Group();
+scene.add(hudGroup);
+hudGroup.add(createHUDScreen(-3.5, 1.5, -2, 0.3, 2.2, 1.1, 'J.A.R.V.I.S.', '#00ccff'));
+hudGroup.add(createHUDScreen(3.5, 1.8, -1.5, -0.3, 2, 1, 'NEURAL NETWORK ACTIVE', '#ffaa40'));
+hudGroup.add(createHUDScreen(-3, -1, -2.5, 0.2, 1.8, 0.9, 'SYSTEMS ONLINE', '#00aaff'));
+hudGroup.add(createHUDScreen(3.2, -0.8, -2, -0.2, 1.6, 0.8, 'DIAGNOSTICS', '#ff8830'));
+
+var gridHelper = new THREE.GridHelper(60, 60, 0x080c14, 0x040608);
+gridHelper.position.y = -3.5;
+gridHelper.material.transparent = true;
+gridHelper.material.opacity = 0.3;
+scene.add(gridHelper);
+
+var floor = new THREE.Mesh(
+  new THREE.PlaneGeometry(60, 60),
+  new THREE.MeshStandardMaterial({ color: 0x080c18, roughness: 0.2, metalness: 0.7, transparent: true, opacity: 0.5 })
+);
+floor.rotation.x = -Math.PI / 2; floor.position.y = -3.5;
+scene.add(floor);
+
+function createPillar(x, z, height) {
+  var p = new THREE.Mesh(
+    new THREE.BoxGeometry(0.5, height, 0.5),
+    new THREE.MeshStandardMaterial({ color: 0x0a0e16, roughness: 0.85, metalness: 0.3 })
+  );
+  p.position.set(x, height / 2 - 3.5, z);
+  return p;
+}
+[[-8,-10],[-5,-12],[5,-12],[8,-10],[-7,10],[7,10],[-10,0],[10,0]].forEach(function(pos) { scene.add(createPillar(pos[0], pos[1], 14)); });
+
+function createMonitor(x, y, z, rotY) {
+  var g = new THREE.Group();
+  g.add(new THREE.Mesh(new THREE.BoxGeometry(0.1,0.8,0.1), new THREE.MeshStandardMaterial({color:0x0c1018,roughness:0.9,metalness:0.2})));
+  var screen = new THREE.Mesh(new THREE.BoxGeometry(1.4,0.9,0.05), new THREE.MeshBasicMaterial({color:0x001828,transparent:true,opacity:0.8}));
+  screen.position.y = 0.1; g.add(screen);
+  var glow = new THREE.Mesh(new THREE.PlaneGeometry(1.2,0.7), new THREE.MeshBasicMaterial({color:0x003060,transparent:true,opacity:0.3,blending:THREE.AdditiveBlending,depthWrite:false}));
+  glow.position.set(0,0.1,0.04); g.add(glow);
+  g.position.set(x,y,z); g.rotation.y = rotY;
+  return g;
+}
+scene.add(createMonitor(-6,-2.2,-8,0.4));
+scene.add(createMonitor(6,-2.2,-8,-0.4));
+scene.add(createMonitor(-4,-2.2,-10,0.2));
+scene.add(createMonitor(4,-2.2,-10,-0.2));
+
+function createDesk(x, z) {
+  var d = new THREE.Mesh(new THREE.BoxGeometry(2.5,0.08,1.2), new THREE.MeshStandardMaterial({color:0x0c1018,roughness:0.7,metalness:0.4}));
+  d.position.set(x,-2.5,z);
+  return d;
+}
+scene.add(createDesk(-6,-7.5));
+scene.add(createDesk(6,-7.5));
+scene.add(createDesk(-4,-9.5));
+scene.add(createDesk(4,-9.5));
+
+var dustPos = new Float32Array(400 * 3);
+for (var i = 0; i < 400; i++) {
+  dustPos[i*3] = (Math.random()-0.5)*30;
+  dustPos[i*3+1] = (Math.random()-0.5)*12;
+  dustPos[i*3+2] = (Math.random()-0.5)*30;
+}
+var dustGeo = new THREE.BufferGeometry();
+dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
+scene.add(new THREE.Points(dustGeo, new THREE.PointsMaterial({color:0x4080c0,size:0.025,transparent:true,opacity:0.3,blending:THREE.AdditiveBlending,depthWrite:false})));
+
+var flareCanvas = document.createElement('canvas');
+flareCanvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5;';
+document.body.appendChild(flareCanvas);
+var fCtx = flareCanvas.getContext('2d');
+flareCanvas.width = innerWidth;
+flareCanvas.height = innerHeight;
+
+function drawFlare(vol) {
+  fCtx.clearRect(0, 0, flareCanvas.width, flareCanvas.height);
+  var x = flareCanvas.width * 0.52;
+  var y = flareCanvas.height * 0.42;
+  var intensity = 0.1 + vol * 0.3;
+  var g1 = fCtx.createRadialGradient(x, y, 0, x, y, 280 + vol * 140);
+  g1.addColorStop(0, 'rgba(100,200,255,' + (intensity*0.8) + ')');
+  g1.addColorStop(0.15, 'rgba(0,150,255,' + (intensity*0.5) + ')');
+  g1.addColorStop(0.4, 'rgba(255,180,80,' + (intensity*0.2) + ')');
+  g1.addColorStop(1, 'rgba(0,100,200,0)');
+  fCtx.fillStyle = g1;
+  fCtx.fillRect(0, 0, flareCanvas.width, flareCanvas.height);
+  var g2 = fCtx.createLinearGradient(x - 450, y, x + 450, y);
+  g2.addColorStop(0, 'rgba(0,150,255,0)');
+  g2.addColorStop(0.3, 'rgba(0,200,255,' + (intensity*0.3) + ')');
+  g2.addColorStop(0.5, 'rgba(100,220,255,' + (intensity*0.7) + ')');
+  g2.addColorStop(0.7, 'rgba(255,180,80,' + (intensity*0.4) + ')');
+  g2.addColorStop(1, 'rgba(255,150,50,0)');
+  fCtx.fillStyle = g2;
+  fCtx.fillRect(x - 450, y - 3, 900, 6);
+}
+
+var audioCtx, analyser, dataArray, micStream;
+var isListening = false;
+var smoothedVol = { v: 0 };
+var hasSpoken = false;
+var micBtn = document.getElementById('micBtn');
+var meterFill = document.getElementById('meterFill');
+var outputEl = document.getElementById('output');
+
+function getVolume() {
+  if (!analyser) return 0;
+  analyser.getByteFrequencyData(dataArray);
+  var s = 0;
+  for (var i = 14; i < 140; i++) s += dataArray[i];
+  return Math.min(1, Math.pow(s / 126 / 255 * 3, 0.7));
+}
+
+function showOutput() {
+  outputEl.textContent = 'hello i can hear u';
+  outputEl.classList.add('show');
+  if ('speechSynthesis' in window) {
+    var u = new SpeechSynthesisUtterance('Hello, I can hear you');
+    u.rate = 0.9; u.pitch = 1.1; u.volume = 1;
+    speechSynthesis.speak(u);
+  }
+  setTimeout(function() { outputEl.classList.remove('show'); }, 4000);
+}
+
+async function startMic() {
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    var src = audioCtx.createMediaStreamSource(micStream);
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 512;
+    analyser.smoothingTimeConstant = 0.75;
+    src.connect(analyser);
+    dataArray = new Uint8Array(analyser.frequencyBinCount);
+    isListening = true;
+    hasSpoken = false;
+    micBtn.classList.add('active');
+    micBtn.textContent = 'stop';
+  } catch (e) {
+    console.warn('Mic access denied');
+  }
+}
+
+function stopMic() {
+  if (micStream) micStream.getTracks().forEach(function(t) { t.stop(); });
+  if (audioCtx) audioCtx.close();
+  isListening = false;
+  micBtn.classList.remove('active');
+  micBtn.textContent = 'speak here';
+  smoothedVol.v = 0;
+  if (hasSpoken) { hasSpoken = false; setTimeout(showOutput, 300); }
+}
+
+micBtn.addEventListener('click', function() {
+  if (isListening) { stopMic(); } else { startMic(); }
+});
+
+var clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  var dt = clock.getDelta();
+  var t = clock.getElapsedTime();
+  var rawVol = getVolume();
+  var rate = rawVol > smoothedVol.v ? 0.35 : 0.05;
+  smoothedVol.v += (rawVol - smoothedVol.v) * rate;
+  var vol = smoothedVol.v;
+  meterFill.style.width = (vol * 100) + '%';
+  if (isListening && vol > 0.03) hasSpoken = true;
+
+  orbGroup.rotation.y += 0.003 + vol * 0.04;
+  orbGroup.rotation.x = Math.sin(t * 0.2) * 0.08 + vol * Math.sin(t * 3) * 0.15;
+
+  wireMat.opacity = 0.2 + vol * 0.5;
+  midMat.opacity = 0.14 + vol * 0.4;
+  innerMat.opacity = 0.08 + vol * 0.3;
+  orbMat.opacity = 0.15 + vol * 0.4;
+  orbCoreMat.opacity = 0.4 + vol * 0.45;
+
+  var scale = 1 + vol * 0.35;
+  wireSphere.scale.setScalar(scale);
+  midSphere.scale.setScalar(1 + vol * 0.25);
+  innerSphere.scale.setScalar(1 + vol * 0.2);
+  orb.scale.setScalar(1 + vol * 0.5);
+  orbCore.scale.setScalar(1 + vol * 0.7);
+
+  coreLight.intensity = 1.2 + vol * 3;
+  coreLight.color.setHSL(0.55 + vol * 0.05, 1, 0.5 + vol * 0.2);
+
+  var pos = streamGeo.attributes.position.array;
+  for (var i = 0; i < STREAM_COUNT; i++) {
+    streamLife[i] += dt * streamSpeed[i] * (1 + vol * 5);
+    if (streamLife[i] > 1) { respawnStreamParticle(i); streamLife[i] = 0; }
+    pos[i*3] += streamVel[i*3] * (1 + vol * 3);
+    pos[i*3+1] += streamVel[i*3+1] * (1 + vol * 4);
+    pos[i*3+2] += streamVel[i*3+2] * (1 + vol * 3);
+    var px = pos[i*3], py = pos[i*3+1], pz = pos[i*3+2];
+    var dist = Math.sqrt(px*px + py*py + pz*pz);
+    var targetR = 1.42 + vol * 0.35;
+    if (dist > targetR + 0.25 || dist < targetR - 0.25) {
+      var s = targetR / dist;
+      pos[i*3] *= s; pos[i*3+1] *= s; pos[i*3+2] *= s;
+    }
+  }
+  streamGeo.attributes.position.needsUpdate = true;
+  streamMat.opacity = 0.5 + vol * 0.5;
+  streamMat.size = 0.014 + vol * 0.03;
+
+  var pos2 = s2Geo.attributes.position.array;
+  for (var i = 0; i < S2_COUNT; i++) {
+    s2Life[i] += dt * s2Speed[i] * (1 + vol * 3);
+    if (s2Life[i] > 1) {
+      var theta = Math.random() * Math.PI * 2;
+      var phi = Math.acos(2 * Math.random() - 1);
+      var r = 1.45;
+      pos2[i*3] = r*Math.sin(phi)*Math.cos(theta);
+      pos2[i*3+1] = r*Math.sin(phi)*Math.sin(theta);
+      pos2[i*3+2] = r*Math.cos(phi);
+      s2Life[i] = 0;
+    }
+    pos2[i*3] += s2Vel[i*3] * (1 + vol * 2);
+    pos2[i*3+1] += s2Vel[i*3+1] * (1 + vol * 3);
+    pos2[i*3+2] += s2Vel[i*3+2] * (1 + vol * 2);
+  }
+  s2Geo.attributes.position.needsUpdate = true;
+
+  for (var ri = 0; ri < rings.length; ri++) {
+    rings[ri].mesh.rotation.z += rings[ri].speed * dt * (1 + vol * 4);
+  }
+
+  var rp = rpGeo.attributes.position.array;
+  for (var i = 0; i < RING_PARTICLE_COUNT; i++) {
+    var d = rpData[i];
+    d.angle += d.speed * dt * (1 + vol * 3);
+    var tilt = rings[d.ringIdx] ? rings[d.ringIdx].tilt : 0;
+    rp[i*3] = Math.cos(d.angle) * d.radius;
+    rp[i*3+1] = Math.sin(d.angle) * d.radius * Math.sin(tilt);
+    rp[i*3+2] = Math.sin(d.angle) * d.radius * Math.cos(tilt);
+  }
+  rpGeo.attributes.position.needsUpdate = true;
+
+  var np = nodeGeo.attributes.position.array;
+  for (var i = 0; i < NODE_COUNT; i++) {
+    var d = nodeDataArr[i];
+    np[i*3] = d.baseX + Math.sin(t * 0.5 + d.phase) * 0.15;
+    np[i*3+1] = d.baseY + Math.cos(t * 0.7 + d.phase) * 0.15;
+    np[i*3+2] = d.baseZ + Math.sin(t * 0.3 + d.phase) * 0.15;
+  }
+  nodeGeo.attributes.position.needsUpdate = true;
+  nodeMat.opacity = 0.5 + vol * 0.4 + Math.sin(t * 2) * 0.1;
+
+  bloom.strength = 2.0 + vol * 3;
+  keyLight.intensity = 0.6 + vol * 1.5;
+  amberLight.intensity = 0.5 + vol * 1.2;
+
+  drawFlare(vol);
+
+  camera.position.x = Math.sin(t * 0.12) * 0.25;
+  camera.position.y = 1.2 + Math.cos(t * 0.08) * 0.12;
+  camera.lookAt(0, 0, 0);
+
+  composer.render();
+}
+
+animate();
+
+window.addEventListener('resize', function() {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+  composer.setSize(innerWidth, innerHeight);
+  flareCanvas.width = innerWidth;
+  flareCanvas.height = innerHeight;
+});
+</script>
+</body>
+</html>
