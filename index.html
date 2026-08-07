@@ -201,36 +201,7 @@ nodeGeo.setAttribute('position', new THREE.BufferAttribute(nodePos, 3));
 const nodeMat = new THREE.PointsMaterial({ color: 0x00eeff, size: 0.06, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false });
 scene.add(new THREE.Points(nodeGeo, nodeMat));
 
-function createHUDScreen(x, y, z, rotY, width, height, text, color) {
-  const c = document.createElement('canvas');
-  c.width = 512; c.height = 256;
-  const ctx = c.getContext('2d');
-  ctx.fillStyle = 'rgba(0,10,20,0.4)';
-  ctx.fillRect(0, 0, 512, 256);
-  ctx.strokeStyle = color; ctx.lineWidth = 2;
-  ctx.strokeRect(4, 4, 504, 248);
-  ctx.fillStyle = color; ctx.font = 'bold 28px monospace';
-  ctx.fillText(text, 20, 50);
-  ctx.font = '14px monospace';
-  var lines = ['NEURAL NETWORK ACTIVE', 'SYNC RATE: 99.7%', 'LATENCY: 0.3ms', 'ENTROPY: NOMINAL', 'UPTIME: ' + Math.floor(Math.random() * 999) + 'h'];
-  for (var j = 0; j < lines.length; j++) ctx.fillText(lines[j], 20, 90 + j * 24);
-  ctx.fillStyle = 'rgba(0,200,255,0.1)';
-  for (var j = 0; j < 8; j++) ctx.fillRect(20, 200 + j * 6, Math.random() * 470, 2);
-  var tex = new THREE.CanvasTexture(c);
-  var mesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(width, height),
-    new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.55, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false })
-  );
-  mesh.position.set(x, y, z); mesh.rotation.y = rotY;
-  return mesh;
-}
 
-var hudGroup = new THREE.Group();
-scene.add(hudGroup);
-hudGroup.add(createHUDScreen(-3.5, 1.5, -2, 0.3, 2.2, 1.1, 'J.A.R.V.I.S.', '#00ccff'));
-hudGroup.add(createHUDScreen(3.5, 1.8, -1.5, -0.3, 2, 1, 'NEURAL NETWORK ACTIVE', '#ffaa40'));
-hudGroup.add(createHUDScreen(-3, -1, -2.5, 0.2, 1.8, 0.9, 'SYSTEMS ONLINE', '#00aaff'));
-hudGroup.add(createHUDScreen(3.2, -0.8, -2, -0.2, 1.6, 0.8, 'DIAGNOSTICS', '#ff8830'));
 
 var gridHelper = new THREE.GridHelper(60, 60, 0x080c14, 0x040608);
 gridHelper.position.y = -3.5;
@@ -290,34 +261,7 @@ var dustGeo = new THREE.BufferGeometry();
 dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
 scene.add(new THREE.Points(dustGeo, new THREE.PointsMaterial({color:0x4080c0,size:0.025,transparent:true,opacity:0.3,blending:THREE.AdditiveBlending,depthWrite:false})));
 
-var flareCanvas = document.createElement('canvas');
-flareCanvas.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5;';
-document.body.appendChild(flareCanvas);
-var fCtx = flareCanvas.getContext('2d');
-flareCanvas.width = innerWidth;
-flareCanvas.height = innerHeight;
 
-function drawFlare(vol) {
-  fCtx.clearRect(0, 0, flareCanvas.width, flareCanvas.height);
-  var x = flareCanvas.width * 0.52;
-  var y = flareCanvas.height * 0.42;
-  var intensity = 0.1 + vol * 0.3;
-  var g1 = fCtx.createRadialGradient(x, y, 0, x, y, 280 + vol * 140);
-  g1.addColorStop(0, 'rgba(100,200,255,' + (intensity*0.8) + ')');
-  g1.addColorStop(0.15, 'rgba(0,150,255,' + (intensity*0.5) + ')');
-  g1.addColorStop(0.4, 'rgba(255,180,80,' + (intensity*0.2) + ')');
-  g1.addColorStop(1, 'rgba(0,100,200,0)');
-  fCtx.fillStyle = g1;
-  fCtx.fillRect(0, 0, flareCanvas.width, flareCanvas.height);
-  var g2 = fCtx.createLinearGradient(x - 450, y, x + 450, y);
-  g2.addColorStop(0, 'rgba(0,150,255,0)');
-  g2.addColorStop(0.3, 'rgba(0,200,255,' + (intensity*0.3) + ')');
-  g2.addColorStop(0.5, 'rgba(100,220,255,' + (intensity*0.7) + ')');
-  g2.addColorStop(0.7, 'rgba(255,180,80,' + (intensity*0.4) + ')');
-  g2.addColorStop(1, 'rgba(255,150,50,0)');
-  fCtx.fillStyle = g2;
-  fCtx.fillRect(x - 450, y - 3, 900, 6);
-}
 
 var audioCtx, analyser, dataArray, micStream;
 var isListening = false;
@@ -477,8 +421,6 @@ function animate() {
   keyLight.intensity = 0.6 + vol * 1.5;
   amberLight.intensity = 0.5 + vol * 1.2;
 
-  drawFlare(vol);
-
   camera.position.x = Math.sin(t * 0.12) * 0.25;
   camera.position.y = 1.2 + Math.cos(t * 0.08) * 0.12;
   camera.lookAt(0, 0, 0);
@@ -493,8 +435,6 @@ window.addEventListener('resize', function() {
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
   composer.setSize(innerWidth, innerHeight);
-  flareCanvas.width = innerWidth;
-  flareCanvas.height = innerHeight;
 });
 </script>
 </body>
