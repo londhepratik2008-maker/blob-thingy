@@ -263,7 +263,7 @@ function stopMic() {
   micBtn.classList.remove('active');
   micBtn.textContent = 'speak here';
   smoothedVol.v = 0;
-  if (hasSpoken) { hasSpoken = false; setTimeout(showOutput, 300); }
+  if (hasSpoken) { hasSpoken = false; showOutput(); }
 }
 
 micBtn.addEventListener('click', function() {
