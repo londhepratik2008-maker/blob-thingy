@@ -226,9 +226,10 @@ function getVolume() {
 }
 
 function showOutput() {
-  outputEl.textContent = 'sunai de raha bhosdike, chila mat';
+  outputEl.textContent = 'Ha bhos-dee-kay, chilla mat';
   outputEl.classList.add('show');
   if ('speechSynthesis' in window) {
+    speechSynthesis.cancel();
     var u = new SpeechSynthesisUtterance('Ha bhos-dee-kay, chilla mat');
     u.rate = 0.85; u.pitch = 1.1; u.volume = 1;
     speechSynthesis.speak(u);
