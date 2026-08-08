@@ -226,11 +226,12 @@ function getVolume() {
 }
 
 function showOutput() {
-  outputEl.textContent = 'hello i can hear u';
+  outputEl.textContent = 'sunai de raha bhosdike, chila mat';
   outputEl.classList.add('show');
   if ('speechSynthesis' in window) {
-    var u = new SpeechSynthesisUtterance('Hello, I can hear you');
+    var u = new SpeechSynthesisUtterance('Sunai de raha bhosdike, chila mat');
     u.rate = 0.9; u.pitch = 1.1; u.volume = 1;
+    u.lang = 'hi-IN';
     speechSynthesis.speak(u);
   }
   setTimeout(function() { outputEl.classList.remove('show'); }, 4000);
