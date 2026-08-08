@@ -217,6 +217,11 @@ var micBtn = document.getElementById('micBtn');
 var meterFill = document.getElementById('meterFill');
 var outputEl = document.getElementById('output');
 
+if ('speechSynthesis' in window) {
+  speechSynthesis.getVoices();
+  speechSynthesis.onvoiceschanged = function() { speechSynthesis.getVoices(); };
+}
+
 function getVolume() {
   if (!analyser) return 0;
   analyser.getByteFrequencyData(dataArray);
@@ -231,7 +236,11 @@ function showOutput() {
   if ('speechSynthesis' in window) {
     speechSynthesis.cancel();
     var u = new SpeechSynthesisUtterance('Ha bhos-dee-kay, chilla mat');
-    u.rate = 0.85; u.pitch = 1.1; u.volume = 1;
+    u.rate = 0.85; u.pitch = 1.2; u.volume = 1;
+    var voices = speechSynthesis.getVoices();
+    var femaleVoice = voices.find(function(v) { return v.name.toLowerCase().indexOf('female') > -1 || v.name.toLowerCase().indexOf('zira') > -1 || v.name.toLowerCase().indexOf('susan') > -1 || v.name.toLowerCase().indexOf('hazel') > -1 || v.name.toLowerCase().indexOf('google') > -1 && v.lang.startsWith('en'); });
+    if (!femaleVoice) femaleVoice = voices.find(function(v) { return v.lang.startsWith('en') && v.name.toLowerCase().indexOf('microsoft') === -1; });
+    if (femaleVoice) u.voice = femaleVoice;
     speechSynthesis.speak(u);
   }
   setTimeout(function() { outputEl.classList.remove('show'); }, 4000);
